@@ -1,0 +1,39 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Issue Triage
+        id: claude-triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Analiza el issue #${{ github.event.issue.number }} del repositorio ${{ github.repository }}.
+
+            1. Lee el título y cuerpo del issue.
+            2. Revisa el código relevante en el repositorio (game.js, index.html, style.css, CLAUDE.md) para entender el contexto real del juego Tetris antes de opinar.
+            3. Asigna las labels apropiadas al issue usando `gh issue edit ${{ github.event.issue.number }} --add-label "<label>"`, eligiendo solo entre las labels existentes del repositorio: bug, documentation, duplicate, enhancement, "good first issue", help wanted, invalid, question, wontfix. No crees labels nuevas. No elimines labels que ya tenga el issue salvo que sean claramente incorrectas.
+            4. Publica un comentario en el issue (`gh issue comment ${{ github.event.issue.number }} --body "..."`) con un diagnóstico general del problema:
+               - Causa probable o análisis del pedido.
+               - Archivos y funciones concretas de game.js/index.html/style.css involucradas (por ejemplo collide, tryRotate, clearLines, spawn, loop, según aplique).
+               - Enfoque sugerido para la solución, sin implementar código todavía — este diagnóstico servirá de base para una implementación posterior.
+
+            No hagas cambios de código ni abras pull requests, solo etiqueta y comenta el diagnóstico.
+          claude_args: |
+            --allowedTools "Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh issue view:*)"
